@@ -1,6 +1,8 @@
+import itertools as it
 import math
 import numpy as np
 import torch
+import torch.multiprocessing as mp
 
 
 def register_computed_parameter(module, name, tensor):
@@ -86,6 +88,17 @@ def tridiagonal_solve(b, A_upper, A_diagonal, A_lower):
         outs[i] = (new_b[i] - A_upper[..., i] * outs[i + 1]) / new_A_diagonal[i]
 
     return torch.stack(outs.tolist(), dim=-1)
+
+
+def maybe_parallel_unbind(func, static, tensor):
+    if tensor.requires_grad or mp.current_process().daemon:
+        out = []
+        for value in tensor.unbind(dim=0):
+            out.append(func(static, value))
+        return out
+    else:
+        with mp.Pool() as pool:
+            return pool.starmap(func, zip(it.repeat(static), tensor.unbind(dim=0)))
 
 
 def validate_input_path(x, t):

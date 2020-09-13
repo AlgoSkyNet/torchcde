@@ -75,10 +75,7 @@ def _linear_interpolation_coeffs_with_missing_values(t, x):
         # being different in different channels
         return _linear_interpolation_coeffs_with_missing_values_scalar(t, x)
     else:
-        out_pieces = []
-        for p in x.unbind(dim=0):  # TODO: parallelise over this
-            out = _linear_interpolation_coeffs_with_missing_values(t, p)
-            out_pieces.append(out)
+        out_pieces = misc.maybe_parallel_unbind(_linear_interpolation_coeffs_with_missing_values, t, x)
         return misc.cheap_stack(out_pieces, dim=0)
 
 

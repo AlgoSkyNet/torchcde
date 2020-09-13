@@ -10,7 +10,7 @@ def _natural_cubic_spline_coeffs_without_missing_values(t, x):
     length = x.size(-1)
 
     if length < 2:
-        # In practice this should always already be caught in __init__.
+        # In practice this should always already be caught in validate_input_path.
         raise ValueError("Must have a time dimension of size at least 2.")
     elif length == 2:
         a = x[..., :1]
@@ -58,16 +58,8 @@ def _natural_cubic_spline_coeffs_with_missing_values(t, x):
         # being different in different channels
         return _natural_cubic_spline_coeffs_with_missing_values_scalar(t, x)
     else:
-        a_pieces = []
-        b_pieces = []
-        two_c_pieces = []
-        three_d_pieces = []
-        for p in x.unbind(dim=0):  # TODO: parallelise over this
-            a, b, two_c, three_d = _natural_cubic_spline_coeffs_with_missing_values(t, p)
-            a_pieces.append(a)
-            b_pieces.append(b)
-            two_c_pieces.append(two_c)
-            three_d_pieces.append(three_d)
+        out = misc.maybe_parallel_unbind(_natural_cubic_spline_coeffs_with_missing_values, t, x)
+        a_pieces, b_pieces, two_c_pieces, three_d_pieces = zip(*out)
         return (misc.cheap_stack(a_pieces, dim=0),
                 misc.cheap_stack(b_pieces, dim=0),
                 misc.cheap_stack(two_c_pieces, dim=0),
